@@ -1,0 +1,103 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title></title>
+    <meta charset="utf-8" />
+    <style>
+        .progress {
+            height: 20px;
+            overflow: hidden;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            -webkit-box-shadow: inset 0 1px 2px rgba(0,0,0,.1);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,.1);
+        }
+
+        .progress-bar {
+            float: left;
+            width: 0;
+            height: 100%;
+            font-size: 12px;
+            line-height: 20px;
+            color: #fff;
+            text-align: center;
+            background-color: #337ab7;
+            -webkit-box-shadow: inset 0 -1px 0 rgba(0,0,0,.15);
+            box-shadow: inset 0 -1px 0 rgba(0,0,0,.15);
+            -webkit-transition: width .6s ease;
+            -o-transition: width .6s ease;
+            transition: width .6s ease;
+            text-align: center;
+        }
+
+        .progress-text {
+            font-size: large;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="jumbotron">
+            <input type="file" id="exampleInputFile">
+        </div>
+        <p>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar"></div>
+            </div>
+            <div class="progress-text"></div>
+        </p>
+    </div>
+    <script src="//cdn.bootcss.com/jquery/3.0.0/jquery.min.js"></script>
+    <script>
+        $(function () {
+
+            $("#exampleInputFile").change(function (event) {
+                var file = $("#exampleInputFile")[0].files[0];
+                PostFile(file, 0);
+            });
+
+            function PostFile(file, i) {
+                var name = file.name, //文件名
+                size = file.size, //总大小shardSize = 2 * 1024 * 1024,
+                shardSize = 1024 * 1024 * 2,//以2MB为一个分片
+                shardCount = Math.ceil(size / shardSize); //总片数
+                if (i >= shardCount) {
+                    return;
+                }
+                //计算每一片的起始与结束位置
+                var start = i * shardSize,
+                end = Math.min(size, start + shardSize);
+                //构造一个表单，FormData是HTML5新增的
+                var form = new FormData();
+
+                form.append("data", file.slice(start, end)); //slice方法用于切出文件的一部分
+                form.append("lastModified", file.lastModified);
+                form.append("name", name);
+                form.append("total", shardCount); //总片数
+                form.append("index", i + 1); //当前是第几片
+
+                //Ajax提交
+                $.ajax({
+                    url: "AjaxFile.ashx",
+                    type: "POST",
+                    data: form,
+                    async: true, //异步
+                    processData: false, //很重要，告诉jquery不要对form进行处理
+                    contentType: false, //很重要，指定为false才能形成正确的Content-Type
+                    success: function (data) {
+                        if (data) {
+                            i = data++;
+                            var num = Math.ceil(i * 100 / shardCount);
+                            $(".progress-bar").width(num + '%');
+                            $(".progress-text").text(num + '%');
+                            PostFile(file, i);
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
